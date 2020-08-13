@@ -33,4 +33,12 @@ fun main() {
         is ImpossibleBoard -> println("The board could not be assigned")
         is Board -> puzzle4.display()
     }
+    println()
+    println("~~~~~~~")
+    println()
+    val puzzle5 = Board.solve("..5........3.69..5...3...8947...62......9......68...1782...4...1..93.8........4..")
+    when (puzzle5) {
+        is ImpossibleBoard -> println("The board could not be assigned")
+        is Board -> puzzle5.display()
+    }
 }

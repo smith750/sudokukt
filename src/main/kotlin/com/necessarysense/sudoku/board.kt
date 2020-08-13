@@ -51,7 +51,14 @@ class Board(private val board: PersistentMap<SquarePosition, SquarePossibility>)
     Return values, except return False if a contradiction is detected. */
     fun eliminate(square: SquarePosition, digit: Char): BoardPossibility {
         return when (val squareValues = board[square] ?: error("Could not find square $square in board")) {
-            is Resolved -> this
+            is Resolved -> {
+                if (squareValues.actuality == digit) {
+                    // whoops! we're removing our resolved digit
+                    ImpossibleBoard
+                } else {
+                    this
+                }
+            }
             is Unresolved -> {
                 val newPossibilities = squareValues.possibilities - digit
                 // (1) If a square s is reduced to one value d2, then eliminate d2 from the peers.
