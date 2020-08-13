@@ -1,6 +1,5 @@
-package test.kotlin.com.necessarysense.sudoku
+package com.necessarysense.sudoku
 
-import main.kotlin.com.necessarysense.sudoku.Board
 import org.spekframework.spek2.Spek
 import org.spekframework.spek2.style.specification.describe
 import kotlin.test.assertEquals

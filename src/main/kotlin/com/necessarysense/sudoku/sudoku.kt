@@ -1,4 +1,4 @@
-package main.kotlin.com.necessarysense.sudoku
+package com.necessarysense.sudoku
 
 /*
 Based off of, of course; https://norvig.com/sudoku.html

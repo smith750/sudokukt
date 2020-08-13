@@ -3,13 +3,34 @@
  */
 package com.necessarysense.sudoku
 
-import main.kotlin.com.necessarysense.sudoku.Board
-import main.kotlin.com.necessarysense.sudoku.ImpossibleBoard
-
 fun main() {
-    val puzzle1 = Board.parseGrid("003020600900305001001806400008102900700000008006708200002609500800203009005010300")
+    val puzzle1 = Board.solve("..3.2.6..9..3.5..1..18.64....81.29..7.......8..67.82....26.95..8..2.3..9..5.1.3..")
     when (puzzle1) {
         is ImpossibleBoard -> println("The board could not be assigned")
         is Board -> puzzle1.display()
+    }
+    println()
+    println("~~~~~~~")
+    println()
+    val puzzle2 = Board.solve("4.....8.5.3..........7......2.....6.....8.4......1.......6.3.7.5..2.....1.4......")
+    when (puzzle2) {
+        is ImpossibleBoard -> println("The board could not be assigned")
+        is Board -> puzzle2.display()
+    }
+    println()
+    println("~~~~~~~")
+    println()
+    val puzzle3 = Board.solve("..59.3..1.8..7..24..125.8.932...8.4..7.....5..5.3...965.2.417..41..3..6.6..8.24..")
+    when (puzzle3) {
+        is ImpossibleBoard -> println("The board could not be assigned")
+        is Board -> puzzle3.display()
+    }
+    println()
+    println("~~~~~~~")
+    println()
+    val puzzle4 = Board.solve("....7..89..6.3..1...51..4........876..9...5..687........4..91...9..8.6..13..4....")
+    when (puzzle4) {
+        is ImpossibleBoard -> println("The board could not be assigned")
+        is Board -> puzzle4.display()
     }
 }
