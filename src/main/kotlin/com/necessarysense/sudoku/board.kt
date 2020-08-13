@@ -2,21 +2,6 @@ package com.necessarysense.sudoku
 
 import kotlinx.collections.immutable.*
 
-typealias SquarePosition = Pair<Char, Char>
-
-sealed class SquarePossibility
-data class Unresolved(val possibilities: PersistentSet<Char>) : SquarePossibility() {
-    override fun toString(): String {
-        return possibilities.joinToString("")
-    }
-}
-
-data class Resolved(val actuality: Char) : SquarePossibility() {
-    override fun toString(): String {
-        return actuality.toString()
-    }
-}
-
 sealed class BoardPossibility {
     abstract fun search(): BoardPossibility
 }
