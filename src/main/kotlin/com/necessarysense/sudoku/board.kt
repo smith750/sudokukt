@@ -4,10 +4,12 @@ import kotlinx.collections.immutable.*
 
 sealed class BoardPossibility {
     abstract fun search(): BoardPossibility
+    abstract fun display(): String
 }
 
 object ImpossibleBoard : BoardPossibility() {
     override fun search(): BoardPossibility = ImpossibleBoard
+    override fun display(): String = "The board could not be assigned"
 }
 
 class Board(private val board: PersistentMap<SquarePosition, SquarePossibility>) : BoardPossibility() {
@@ -121,10 +123,10 @@ class Board(private val board: PersistentMap<SquarePosition, SquarePossibility>)
         }
     }
 
-    fun display() {
+    override fun display(): String {
         val width = 1 + SQUARES.map { square -> board[square]!!.toString().length }.max()!!
         val splitLine = generateSequence { "-".repeat(width * 3) }.take(3).joinToString("+")
-        rows.forEach { row ->
+        return rows.map { row ->
             val rowLine = cols.flatMap { col ->
                 val colSplit = if (col == '3' || col == '6') {
                     "|"
@@ -137,11 +139,12 @@ class Board(private val board: PersistentMap<SquarePosition, SquarePossibility>)
                     colSplit
                 )
             }.joinToString("")
-            println(rowLine)
             if (row == 'C' || row == 'F') {
-                println(splitLine)
+                rowLine + "\n" + splitLine
+            } else {
+                rowLine
             }
-        }
+        }.joinToString("\n")
     }
 
     override fun search(): BoardPossibility {
