@@ -3,12 +3,10 @@ package com.necessarysense.sudoku
 import kotlinx.collections.immutable.*
 
 sealed class BoardPossibility {
-    abstract fun search(): BoardPossibility
     abstract fun display(): String
 }
 
 object ImpossibleBoard : BoardPossibility() {
-    override fun search(): BoardPossibility = ImpossibleBoard
     override fun display(): String = "The board could not be assigned"
 }
 
@@ -138,18 +136,20 @@ class Board(private val board: PersistentMap<SquarePosition, SquarePossibility>)
         }
     }
 
-    override fun search(): BoardPossibility {
+    fun search(): BoardPossibility {
         return if (isSolved()) {
             this
         } else {
             val firstSmallSquare = board.entries.
-                filter { boardEntry -> boardEntry.value is Unresolved }.
-                map { boardEntry -> (boardEntry.key to (boardEntry.value as Unresolved).possibilities.size ) }.
-                minBy { entryPair -> entryPair.second }
+                filter { it.value is Unresolved }.
+                map { (it.key to (it.value as Unresolved).possibilities.size) }.
+                minBy { it.second }
             val firstSmallSquareValues = (board[firstSmallSquare!!.first] as Unresolved)
             firstSmallSquareValues.possibilities.asSequence().map { possibleDigit ->
-                Board(board).assign(firstSmallSquare.first, possibleDigit).search()
-            }.find { newBoard -> newBoard is Board && newBoard.isSolved() } ?: ImpossibleBoard
+                Game.mapBoardPossibility(
+                    Game.mapBoardPossibility(Board(board)) { it.assign(firstSmallSquare.first, possibleDigit) })
+                { it.search() }
+            }.find { it is Board && it.isSolved() } ?: ImpossibleBoard
         }
     }
 

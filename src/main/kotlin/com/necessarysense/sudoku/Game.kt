@@ -8,7 +8,7 @@ import kotlinx.collections.immutable.toPersistentList
 object Game {
     private val parsableChars: PersistentList<Char> = Board.digits + persistentListOf('0', '.')
 
-    fun solve(grid: String): BoardPossibility = parseGrid(grid).search()
+    fun solve(grid: String): BoardPossibility = mapBoardPossibility(parseGrid(grid)) { it.search() }
 
     private fun parseGrid(grid: String): BoardPossibility {
         val startingBoard: BoardPossibility = Board.entirelyPossibleBoard()
