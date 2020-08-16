@@ -13,7 +13,7 @@ object ImpossibleBoard : BoardPossibility() {
 }
 
 class Board(private val board: PersistentMap<SquarePosition, SquarePossibility>) : BoardPossibility() {
-    private fun assign(square: SquarePosition, digit: Char): BoardPossibility {
+    fun assign(square: SquarePosition, digit: Char): BoardPossibility {
         return when (val squareValues = board[square] ?: error("Could not find square $square in board")) {
             is Resolved -> {
                 if (squareValues.actuality != digit) {
@@ -68,22 +68,18 @@ class Board(private val board: PersistentMap<SquarePosition, SquarePossibility>)
                     }
                 }
                 // (2) If a unit u is reduced to only one place for a value d, then put it there.
-                when (newBoard) {
-                    is Board -> assignForUnits(square, newBoard, digit)
-                    is ImpossibleBoard -> ImpossibleBoard
-                }
+                Game.mapBoardPossibility(newBoard) { nb -> nb.assignForUnits(square, digit) }
             }
         }
     }
 
     private fun assignForUnits(
         square: SquarePosition,
-        newBoard: Board,
         digit: Char
     ): BoardPossibility {
         val dPlaces = units[square]!!.flatMap { unitSquares: List<SquarePosition> ->
             unitSquares.filter { unitSquare ->
-                when (val unitSquareValue = newBoard.board[unitSquare]!!) {
+                when (val unitSquareValue = board[unitSquare]!!) {
                     is Resolved -> {
                         digit == unitSquareValue.actuality
                     }
@@ -98,10 +94,10 @@ class Board(private val board: PersistentMap<SquarePosition, SquarePossibility>)
                 ImpossibleBoard
             }
             dPlaces.size == 1 -> {
-                newBoard.assign(dPlaces[0], digit)
+                assign(dPlaces[0], digit)
             }
             else -> {
-                newBoard
+                this
             }
         }
     }
@@ -114,19 +110,14 @@ class Board(private val board: PersistentMap<SquarePosition, SquarePossibility>)
         return PEERS[square]!!.fold(
             Board(newBoardMap) as BoardPossibility
         ) { b: BoardPossibility, peerSquare: SquarePosition ->
-            when (b) {
-                is ImpossibleBoard -> ImpossibleBoard
-                is Board -> {
-                    b.eliminate(peerSquare, remainingDigit)
-                }
-            }
+            Game.mapBoardPossibility(b) { brd -> brd.eliminate(peerSquare, remainingDigit) }
         }
     }
 
     override fun display(): String {
         val width = 1 + SQUARES.map { square -> board[square]!!.toString().length }.max()!!
         val splitLine = generateSequence { "-".repeat(width * 3) }.take(3).joinToString("+")
-        return rows.map { row ->
+        return rows.joinToString("\n") { row ->
             val rowLine = cols.flatMap { col ->
                 val colSplit = if (col == '3' || col == '6') {
                     "|"
@@ -144,7 +135,7 @@ class Board(private val board: PersistentMap<SquarePosition, SquarePossibility>)
             } else {
                 rowLine
             }
-        }.joinToString("\n")
+        }
     }
 
     override fun search(): BoardPossibility {
@@ -162,20 +153,19 @@ class Board(private val board: PersistentMap<SquarePosition, SquarePossibility>)
         }
     }
 
-    private fun isSolved(): Boolean = SQUARES.all { square -> board[square]!! is Resolved }
+    fun isSolved(): Boolean = SQUARES.all { square -> board[square]!! is Resolved }
 
     companion object {
-        private val digits: PersistentList<Char> = ('1'..'9').toPersistentList()
-        val rows: PersistentList<Char> = ('A'..'I').toPersistentList()
-        val cols: PersistentList<Char> = digits
-        private val parsableChars: PersistentList<Char> = digits + persistentListOf('0', '.')
+        val digits: PersistentList<Char> = ('1'..'9').toPersistentList()
+        private val rows: PersistentList<Char> = ('A'..'I').toPersistentList()
+        private val cols: PersistentList<Char> = digits
 
         val SQUARES: PersistentList<SquarePosition> =
             crossProduct(
                 rows,
                 cols
             )
-        val UNIT_LIST: PersistentList<PersistentList<SquarePosition>> =
+        private val UNIT_LIST: PersistentList<PersistentList<SquarePosition>> =
             (cols.map { col ->
                 SQUARES.filter { square -> square.second == col }
             } +
@@ -191,7 +181,7 @@ class Board(private val board: PersistentMap<SquarePosition, SquarePossibility>)
                         }
                     }).map { l -> l.toPersistentList()}.toPersistentList()
 
-        val units: PersistentMap<SquarePosition, List<List<SquarePosition>>> =
+        private val units: PersistentMap<SquarePosition, List<List<SquarePosition>>> =
             SQUARES.fold(mapOf<SquarePosition, List<List<SquarePosition>>>()) { acc, square ->
                 val containingUnits = UNIT_LIST.filter { connectionList ->
                     square in connectionList
@@ -199,45 +189,20 @@ class Board(private val board: PersistentMap<SquarePosition, SquarePossibility>)
                 acc + (square to containingUnits)
             }.toPersistentMap()
 
-        val PEERS: PersistentMap<SquarePosition, PersistentSet<SquarePosition>> =
+        private val PEERS: PersistentMap<SquarePosition, PersistentSet<SquarePosition>> =
             SQUARES.fold(persistentMapOf()) { peerMap, square ->
                 peerMap + (square to determinePeers(
                     square
                 ))
             }
 
-        fun solve(grid: String): BoardPossibility = parseGrid(grid).search()
-
-        private fun entirelyPossibleBoard(): Board {
+        fun entirelyPossibleBoard(): Board {
             val boardMap = SQUARES.fold(persistentMapOf<SquarePosition, SquarePossibility>()) { bMap, currSquare ->
                 val digitsSet = mutableSetOf<Char>()
                 digitsSet.addAll(digits)
                 bMap + (currSquare to Unresolved(digitsSet.toPersistentSet()))
             }
             return Board(boardMap)
-        }
-
-        private fun parseGrid(grid: String): BoardPossibility {
-            val startingBoard: BoardPossibility = entirelyPossibleBoard()
-            return gridValues(grid).fold(startingBoard) { b, squareAssignment ->
-                when (b) {
-                    is Board ->
-                        if ((squareAssignment.second) in digits) {
-                            b.assign(squareAssignment.first, squareAssignment.second)
-                        } else {
-                            b
-                        }
-                    is ImpossibleBoard -> ImpossibleBoard
-                }
-            }
-        }
-
-        private fun gridValues(grid: String): PersistentList<Pair<SquarePosition, Char>> {
-            val puzzleChars = grid.toCharArray().filter { c -> c in parsableChars }
-            if (puzzleChars.size != 81) {
-                throw IllegalArgumentException("Given grid had ${puzzleChars.size} valid characters in it; it should have exactly 81 valid characters")
-            }
-            return (SQUARES.zip(puzzleChars)).toPersistentList()
         }
 
         private fun crossProduct(a: List<Char>, b: List<Char>): PersistentList<SquarePosition> {
@@ -249,8 +214,8 @@ class Board(private val board: PersistentMap<SquarePosition, SquarePossibility>)
         }
 
         // thanks to https://stackoverflow.com/questions/8154366/how-to-center-a-string-using-string-format
-        fun center(text: String, len: Int): String {
-            val out = String.format("%" + len + "s%s%" + len + "s", "", text, "")
+        private fun center(text: String, len: Int): String {
+            val out = String.format("%" + len + "s%s%" + len + "s ", "", text, "")
             val mid = (out.length / 2).toFloat()
             val start = mid - len / 2
             val end = start + len
