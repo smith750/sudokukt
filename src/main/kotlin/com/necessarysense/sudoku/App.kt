@@ -19,4 +19,7 @@ fun main() {
     printDividers()
     val puzzle5 = Game.solve("..5........3.69..5...3...8947...62......9......68...1782...4...1..93.8........4..")
     println(puzzle5.display())
+
+    val genPuzzle = Board.generateRandom()
+    println(genPuzzle.display())
 }

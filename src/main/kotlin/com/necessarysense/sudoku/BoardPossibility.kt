@@ -79,7 +79,7 @@ class Board(private val board: PersistentMap<SquarePosition, SquarePossibility>)
     ): BoardPossibility {
         val dPlaces = units[square]!!.flatMap { unitSquares: List<SquarePosition> ->
             unitSquares.filter { unitSquare ->
-                when (val unitSquareValue = board[unitSquare]!!) {
+                when (val unitSquareValue = squareValue(unitSquare)) {
                     is Resolved -> {
                         digit == unitSquareValue.actuality
                     }
@@ -115,7 +115,7 @@ class Board(private val board: PersistentMap<SquarePosition, SquarePossibility>)
     }
 
     override fun display(): String {
-        val width = 1 + SQUARES.map { square -> board[square]!!.toString().length }.max()!!
+        val width = 1 + SQUARES.map { square -> squareValue(square).toString().length }.max()!!
         val splitLine = generateSequence { "-".repeat(width * 3) }.take(3).joinToString("+")
         return rows.joinToString("\n") { row ->
             val rowLine = cols.flatMap { col ->
@@ -124,7 +124,7 @@ class Board(private val board: PersistentMap<SquarePosition, SquarePossibility>)
                 } else {
                     ""
                 }
-                val currSquare = board[(row to col)]!!.toString()
+                val currSquare = squareValue(row to col).toString()
                 listOf(
                     center(currSquare, width),
                     colSplit
@@ -153,7 +153,10 @@ class Board(private val board: PersistentMap<SquarePosition, SquarePossibility>)
         }
     }
 
-    fun isSolved(): Boolean = SQUARES.all { square -> board[square]!! is Resolved }
+    fun isSolved(): Boolean = SQUARES.all { square -> squareValue(square) is Resolved }
+
+    private fun squareValue(square: SquarePosition): SquarePossibility =
+        board[square] ?: error("Could not find a value for $square")
 
     companion object {
         val digits: PersistentList<Char> = ('1'..'9').toPersistentList()
@@ -165,7 +168,7 @@ class Board(private val board: PersistentMap<SquarePosition, SquarePossibility>)
                 rows,
                 cols
             )
-        private val UNIT_LIST: PersistentList<PersistentList<SquarePosition>> =
+        internal val UNIT_LIST: PersistentList<PersistentList<SquarePosition>> =
             (cols.map { col ->
                 SQUARES.filter { square -> square.second == col }
             } +
@@ -181,7 +184,7 @@ class Board(private val board: PersistentMap<SquarePosition, SquarePossibility>)
                         }
                     }).map { l -> l.toPersistentList()}.toPersistentList()
 
-        private val units: PersistentMap<SquarePosition, List<List<SquarePosition>>> =
+        internal val units: PersistentMap<SquarePosition, List<List<SquarePosition>>> =
             SQUARES.fold(mapOf<SquarePosition, List<List<SquarePosition>>>()) { acc, square ->
                 val containingUnits = UNIT_LIST.filter { connectionList ->
                     square in connectionList
@@ -189,7 +192,7 @@ class Board(private val board: PersistentMap<SquarePosition, SquarePossibility>)
                 acc + (square to containingUnits)
             }.toPersistentMap()
 
-        private val PEERS: PersistentMap<SquarePosition, PersistentSet<SquarePosition>> =
+        internal val PEERS: PersistentMap<SquarePosition, PersistentSet<SquarePosition>> =
             SQUARES.fold(persistentMapOf()) { peerMap, square ->
                 peerMap + (square to determinePeers(
                     square
@@ -235,6 +238,43 @@ class Board(private val board: PersistentMap<SquarePosition, SquarePossibility>)
             }
             allPeers.remove(square)
             return allPeers.toPersistentSet()
+        }
+
+        /**
+         * Create a random solved puzzle
+         */
+        tailrec fun generateRandom(): Board {
+            tailrec fun assignUnresolved(newBoard: Board, currSquare: SquarePosition, currSquareValue: Unresolved): BoardPossibility {
+                println("$currSquare possibilities ${currSquareValue.possibilities}")
+                val choice = currSquareValue.possibilities.random()
+                println("assigning $choice to $currSquare")
+                val newNewBoard = newBoard.assign(currSquare, choice)
+                return if (newNewBoard is Board) {
+                    newNewBoard
+                } else {
+                    if (currSquareValue.possibilities.size == 1) {
+                        return ImpossibleBoard
+                    } else {
+                        assignUnresolved(newBoard, currSquare, Unresolved(currSquareValue.possibilities - choice))
+                    }
+                }
+            }
+
+            val generatedBoard = SQUARES.fold(entirelyPossibleBoard() as BoardPossibility) { newBoard, currentSquare ->
+                when (newBoard) {
+                    is ImpossibleBoard -> ImpossibleBoard
+                    is Board -> when (val sv = newBoard.squareValue(currentSquare)) {
+                        is Resolved -> newBoard
+                        is Unresolved -> {
+                            assignUnresolved(newBoard, currentSquare, sv)
+                        }
+                    }
+                }
+            }
+            return when (generatedBoard) {
+                is ImpossibleBoard -> generateRandom()
+                is Board -> generatedBoard
+            }
         }
     }
 }

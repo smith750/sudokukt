@@ -1,5 +1,7 @@
 package com.necessarysense.sudoku
 
+import kotlinx.collections.immutable.PersistentSet
+import kotlinx.collections.immutable.persistentSetOf
 import org.spekframework.spek2.Spek
 import org.spekframework.spek2.style.specification.describe
 import kotlin.test.assertEquals
@@ -50,9 +52,9 @@ object BoardTest: Spek({
                 }
 
                 it("should contain the correct contents for square C2") {
-                    val c2Peers = Board.PEERS[('C' to '2')]
+                    val c2Peers: PersistentSet<SquarePosition> = Board.PEERS[('C' to '2')]!!
                     assertEquals(
-                        setOf(('A' to '2'), ('B' to '2'), ('D' to '2'), ('E' to '2'), ('F' to '2'),
+                        persistentSetOf(('A' to '2'), ('B' to '2'), ('D' to '2'), ('E' to '2'), ('F' to '2'),
                             ('G' to '2'), ('H' to '2'), ('I' to '2'), ('C' to '1'), ('C' to '3'),
                             ('C' to '4'), ('C' to '5'), ('C' to '6'), ('C' to '7'), ('C' to '8'),
                             ('C' to '9'), ('A' to '1'), ('A' to '3'), ('B' to '1'), ('B' to '3')),
