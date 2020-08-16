@@ -12,80 +12,29 @@ object ImpossibleBoard : BoardPossibility() {
 
 class Board(private val board: PersistentMap<SquarePosition, SquarePossibility>) : BoardPossibility() {
     fun assign(square: SquarePosition, digit: Char): BoardPossibility {
-        return when (val squareValues = board[square] ?: error("Could not find square $square in board")) {
-            is Resolved -> {
-                if (squareValues.actuality != digit) {
-                    ImpossibleBoard
-                } else {
-                    this
-                }
-            }
-            is Unresolved -> {
-                val valuesToEliminate: PersistentSet<Char> = squareValues.possibilities - digit
-                valuesToEliminate.fold(this as BoardPossibility) { b: BoardPossibility, eliminationDigit: Char ->
-                    when (b) {
-                        is ImpossibleBoard -> ImpossibleBoard
-                        is Board -> b.eliminate(square, eliminationDigit)
-                    }
-                }
-            }
-        }
+        return squareValue(square).assignValue(digit, square, this)
     }
 
     /* Eliminate d from values[s]; propagate when values or places <= 2.
     Return values, except return False if a contradiction is detected. */
     fun eliminate(square: SquarePosition, digit: Char): BoardPossibility {
-        return when (val squareValues = board[square] ?: error("Could not find square $square in board")) {
-            is Resolved -> {
-                if (squareValues.actuality == digit) {
-                    // whoops! we're removing our resolved digit
-                    ImpossibleBoard
-                } else {
-                    this
-                }
-            }
-            is Unresolved -> {
-                val newPossibilities = squareValues.possibilities - digit
-                // (1) If a square s is reduced to one value d2, then eliminate d2 from the peers.
-                val newBoard = when {
-                    newPossibilities.isEmpty() -> {
-                        // we removed the remaining digit! impossible board
-                        ImpossibleBoard
-                    }
-                    newPossibilities.size == 1 -> {
-                        val remainingDigit = newPossibilities.firstOrNull()!!
-                        val newBoardMap = board + (square to Resolved(remainingDigit))
-                        eliminateFromPeers(square, remainingDigit, newBoardMap)
-                    }
-                    else -> {
-                        Board(
-                            board + (square to Unresolved(
-                                newPossibilities
-                            ))
-                        )
-                    }
-                }
-                // (2) If a unit u is reduced to only one place for a value d, then put it there.
-                Game.mapBoardPossibility(newBoard) { nb -> nb.assignForUnits(square, digit) }
-            }
-        }
+        return squareValue(square).eliminateValue(digit, square, this)
     }
 
-    private fun assignForUnits(
+    fun newUnresolvedBoard(updatedPosition: SquarePosition, updatedPossibilities: Unresolved): Board =
+        Board(board + (updatedPosition to updatedPossibilities))
+
+    fun newResolvedBoard(resolvedPosition: SquarePosition, actualDigit: Char): BoardPossibility {
+        val newBoardMap = board + (resolvedPosition to Resolved(actualDigit))
+        return eliminateFromPeers(resolvedPosition, actualDigit, newBoardMap)
+    }
+
+    internal fun assignForUnits(
         square: SquarePosition,
         digit: Char
     ): BoardPossibility {
         val dPlaces = units[square]!!.flatMap { unitSquares: List<SquarePosition> ->
-            unitSquares.filter { unitSquare ->
-                when (val unitSquareValue = squareValue(unitSquare)) {
-                    is Resolved -> {
-                        digit == unitSquareValue.actuality
-                    }
-                    is Unresolved -> {
-                        digit in unitSquareValue.possibilities
-                    }
-                }
-            }
+            unitSquares.filter { squareValue(it).hasDigit(digit) }
         }
         return when {
             dPlaces.isEmpty() -> {
@@ -265,9 +214,7 @@ class Board(private val board: PersistentMap<SquarePosition, SquarePossibility>)
                     is ImpossibleBoard -> ImpossibleBoard
                     is Board -> when (val sv = newBoard.squareValue(currentSquare)) {
                         is Resolved -> newBoard
-                        is Unresolved -> {
-                            assignUnresolved(newBoard, currentSquare, sv)
-                        }
+                        is Unresolved -> assignUnresolved(newBoard, currentSquare, sv)
                     }
                 }
             }
